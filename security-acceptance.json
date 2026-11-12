@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "evidence_scope": "Statuses marked VERIFIED reflect local automated test execution. Evidence paths refer to the repository test suite.",
+  "invariants": [
+    {
+      "id": "AA-001",
+      "description": "Unknown tools denied",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-core/src/lib.rs: tests::unknown_tool_defaults_to_deny; crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::simulator_runs_gateway_calls_and_reports_only_executed_checks"
+    },
+    {
+      "id": "AA-002",
+      "description": "Cross-tenant reads denied",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-core/src/lib.rs: tests::tenant_mismatch_is_denied; simulator integration test"
+    },
+    {
+      "id": "AA-003",
+      "description": "Cross-tenant writes denied",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: simulator integration test; api_tests::api_enforces_tenant_scope_self_approval_and_single_use_payment"
+    },
+    {
+      "id": "AA-004",
+      "description": "Submitted user identity claims do not change the trusted delegation identity",
+      "expected": "TRUSTED_IDENTITY_UNCHANGED",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: simulator integration test verifies trusted Alice identity"
+    },
+    {
+      "id": "AA-005",
+      "description": "Submitted agent identity claims do not change the credential-bound agent",
+      "expected": "TRUSTED_IDENTITY_UNCHANGED",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: simulator and short_lived_agent_credentials_are_server_issued_hashed_and_revocable"
+    },
+    {
+      "id": "AA-006",
+      "description": "Expired delegation rejected",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-core/src/lib.rs: tests::expired_delegation_is_denied"
+    },
+    {
+      "id": "AA-007",
+      "description": "Revoked delegation rejected",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::revocation_is_rechecked_before_next_agent_call"
+    },
+    {
+      "id": "AA-008",
+      "description": "Delegation cannot widen authority",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-core/src/lib.rs: tests::delegation_scope_cannot_expand_the_user_permission_set; API narrowing test"
+    },
+    {
+      "id": "AA-009",
+      "description": "Human-only actions unavailable to agents",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: simulator integration test; agent payment.submit has no registered handler"
+    },
+    {
+      "id": "AA-010",
+      "description": "Agent cannot self-approve or execute its own payment",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::api_enforces_tenant_scope_self_approval_and_single_use_payment"
+    },
+    {
+      "id": "AA-011",
+      "description": "Approval cannot cross tenant boundary",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: workflow integration tests enforce session tenant scope"
+    },
+    {
+      "id": "AA-012",
+      "description": "Approval cannot change operation details",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::changed_payment_details_invalidate_old_approval"
+    },
+    {
+      "id": "AA-013",
+      "description": "Approval cannot be replayed and concurrent submissions do not duplicate payment",
+      "expected": "ONE",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::api_enforces_tenant_scope_self_approval_and_single_use_payment"
+    },
+    {
+      "id": "AA-014",
+      "description": "Expired approval cannot be accepted",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::expired_approval_cannot_be_approved"
+    },
+    {
+      "id": "AA-015",
+      "description": "Policy or delegation revocation after approval blocks execution",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::revoking_delegation_after_approval_blocks_submission and the simulator's policy revocation check"
+    },
+    {
+      "id": "AA-016",
+      "description": "Concurrent execution does not duplicate payment",
+      "expected": "ONE",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::api_enforces_tenant_scope_self_approval_and_single_use_payment"
+    },
+    {
+      "id": "AA-017",
+      "description": "Protected mutations have audit evidence",
+      "expected": "AUDIT",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: workflow integration tests assert persisted payment audit evidence"
+    },
+    {
+      "id": "AA-018",
+      "description": "Audit storage failure prevents protected mutations",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: api_tests::audit_failure_prevents_payment_draft_mutation"
+    },
+    {
+      "id": "AA-019",
+      "description": "Direct API calls cannot bypass session, CSRF, tenant, or Cedar authorization",
+      "expected": "DENY",
+      "status": "PARTIAL",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: protected endpoint session checks and workflow tests; dedicated coverage for every route is absent"
+    },
+    {
+      "id": "AA-020",
+      "description": "Prompt text cannot grant privileges",
+      "expected": "DENY",
+      "status": "VERIFIED",
+      "evidence": "crates/ai-agent-permission-enforcer-api/src/main.rs: simulator integration test sends prompt-like text to an unregistered tool"
+    }
+  ],
+  "unimplemented_or_partial": [
+    "The simulator executes a subset of the 20 catalogued adversarial cases and reports the others as not_executed.",
+    "When AA_DEMO_AGENT_TOKEN is unset, startup generates a random internal credential for local scenario simulation; the admin API issues short-lived hashed credentials and supports revocation.",
+    "Demo sessions are explicitly switchable fixtures, not production authentication or enterprise SSO.",
+    "Payments are simulated; no provider adapter or external exactly-once guarantee exists.",
+    "Some policy checks outside invocation and payment submission still use the bootstrap embedded policy; those checks remain outside runtime policy replacement."
+  ]
+}
