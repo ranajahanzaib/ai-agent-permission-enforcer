@@ -1,0 +1,13 @@
+entity User;
+entity Agent;
+entity Resource;
+action "invoice.read" appliesTo { principal: [Agent, User], resource: [Resource] };
+action "invoice.list" appliesTo { principal: [Agent, User], resource: [Resource] };
+action "payment_draft.create" appliesTo { principal: [Agent, User], resource: [Resource] };
+action "payment_draft.read" appliesTo { principal: [Agent, User], resource: [Resource] };
+action "payment.approval_request" appliesTo { principal: [Agent, User], resource: [Resource] };
+action "payment.approve" appliesTo { principal: [User], resource: [Resource] };
+action "payment.submit" appliesTo { principal: [User], resource: [Resource] };
+action "audit.read" appliesTo { principal: [User], resource: [Resource] };
+action "agent.credential.issue" appliesTo { principal: [User], resource: [Resource] };
+action "policy.manage" appliesTo { principal: [User], resource: [Resource] };

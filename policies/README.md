@@ -1,0 +1,3 @@
+# Policy model
+
+`finance.cedar` contains the bootstrap Cedar permits. Startup stores it as policy version 1 in SQLite; a finance admin can submit a strictly schema-validated policy version through `POST /api/policies`. Agent invocation and human payment submission evaluate the active policy, and payment submission reads the version inside its transaction before execution. Runtime policy replacement governs those decisions only; other Cedar checks use the shipped bootstrap policy. Cedar's decision is only one necessary condition: API-side code separately enforces tenant boundaries and delegation validity. Requests fail closed on Cedar parse or evaluation errors.

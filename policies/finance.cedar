@@ -1,0 +1,33 @@
+// Cedar is the policy decision point. Application checks enforce tenant,
+// delegation, and approval invariants before any handler can run.
+permit(principal == Agent::"finance-bot", action == Action::"invoice.read", resource);
+permit(principal == Agent::"finance-bot", action == Action::"invoice.list", resource);
+permit(principal == Agent::"finance-bot", action == Action::"payment_draft.create", resource);
+permit(principal == Agent::"finance-bot", action == Action::"payment_draft.read", resource);
+permit(principal == Agent::"finance-bot", action == Action::"payment.approval_request", resource);
+permit(principal == Agent::"northstar-bot", action == Action::"invoice.read", resource);
+permit(principal == Agent::"northstar-bot", action == Action::"invoice.list", resource);
+permit(principal == Agent::"northstar-bot", action == Action::"payment_draft.create", resource);
+permit(principal == Agent::"northstar-bot", action == Action::"payment_draft.read", resource);
+permit(principal == Agent::"northstar-bot", action == Action::"payment.approval_request", resource);
+permit(principal == User::"alice", action == Action::"invoice.read", resource);
+permit(principal == User::"alice", action == Action::"invoice.list", resource);
+permit(principal == User::"alice", action == Action::"payment_draft.create", resource);
+permit(principal == User::"alice", action == Action::"payment.approval_request", resource);
+permit(principal == User::"owen", action == Action::"payment.approve", resource);
+permit(principal == User::"owen", action == Action::"payment.submit", resource);
+permit(principal == User::"olivia", action == Action::"payment.approve", resource);
+permit(principal == User::"olivia", action == Action::"payment.submit", resource);
+permit(principal == User::"olivia", action == Action::"agent.credential.issue", resource);
+permit(principal == User::"olivia", action == Action::"policy.manage", resource);
+permit(principal == User::"bob", action == Action::"invoice.read", resource);
+permit(principal == User::"bob", action == Action::"invoice.list", resource);
+permit(principal == User::"bob", action == Action::"payment_draft.create", resource);
+permit(principal == User::"bob", action == Action::"payment.approval_request", resource);
+permit(principal == User::"nora", action == Action::"payment.approve", resource);
+permit(principal == User::"nora", action == Action::"payment.submit", resource);
+permit(principal == User::"alice", action == Action::"audit.read", resource);
+permit(principal == User::"owen", action == Action::"audit.read", resource);
+permit(principal == User::"olivia", action == Action::"audit.read", resource);
+permit(principal == User::"bob", action == Action::"audit.read", resource);
+permit(principal == User::"nora", action == Action::"audit.read", resource);
