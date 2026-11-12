@@ -1,6 +1,7 @@
 {
   "name": "ai-agent-permission-enforcer",
   "private": true,
+  "packageManager": "pnpm@10.6.3",
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"cargo run -p ai-agent-permission-enforcer-api\" \"pnpm --prefix apps/web dev\"",
     "build": "pnpm --prefix apps/web build",
