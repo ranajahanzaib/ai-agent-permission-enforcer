@@ -1,0 +1,13 @@
+{
+  "name": "ai-agent-permission-enforcer",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"cargo run -p ai-agent-permission-enforcer-api\" \"pnpm --prefix apps/web dev\"",
+    "build": "pnpm --prefix apps/web build",
+    "test:web": "pnpm --prefix apps/web test",
+    "lint:web": "pnpm --prefix apps/web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
