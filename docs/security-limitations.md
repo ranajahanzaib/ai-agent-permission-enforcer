@@ -1,0 +1,3 @@
+# Security limitations
+
+This local reference implementation demonstrates a trusted backend authorization gateway and Cedar evaluation. Admins can issue short-lived opaque agent credentials; the startup bootstrap credential and switchable human demo identities remain development fixtures. It does not include enterprise SSO, production MFA, a complete OAuth provider, universal MCP support, cloud KMS, tamper-proof audit retention, regulatory certification, real payment processing, distributed exactly-once execution, or complete prompt-injection protection. Review and replace demo authentication, key storage, CSRF/CORS configuration, rate limiting, policy delivery, and operational controls before production use. Deploy behind TLS.

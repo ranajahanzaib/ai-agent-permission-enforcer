@@ -1,46 +1,26 @@
-## Contributing
+# Contributing
 
-We welcome contributions of all kinds to improve this project! Here's how you can get involved:
+Contributions are welcome through GitHub issues and pull requests. Report bugs and suggest enhancements through the issue tracker. For security vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
-1. **Fork the Repository**: Start by forking the repository to your GitHub account.
+## Development setup
 
-2. **Clone Your Fork**: Clone the forked repository to your local machine:
+Install stable Rust, Node.js 20 or later, and pnpm, then install the web dependencies:
 
-   ```bash
-   git clone <repo_url>
-   cd repo_dir
-   ```
+```bash
+pnpm install
+pnpm --prefix apps/web install
+```
 
-3. **Create a Branch**: Create a new branch for your feature or bug fix:
+Run the checks relevant to your change before opening a pull request:
 
-   ```bash
-   git checkout -b feature-name
-   ```
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+pnpm --prefix apps/web lint
+pnpm --prefix apps/web test
+pnpm --prefix apps/web build
+pnpm --prefix apps/web test:e2e
+```
 
-4. **Make Changes**: Make your changes to the codebase. Be sure to follow existing code style and conventions.
-
-5. **Commit Changes**: Commit your changes with a clear and descriptive message:
-
-   ```bash
-   git commit -m "Add detailed description of the changes"
-   ```
-
-6. **Push Changes**: Push your changes to your fork:
-
-   ```bash
-   git push origin feature-name
-   ```
-
-7. **Submit a Pull Request**: Open a pull request from your branch to the main repository's branch. Include a detailed description of your changes and the problem they solve.
-
-8. **Review and Feedback**: Participate in the review process. Make any requested changes, and your contribution will be merged!
-
-### Guidelines
-
-- Ensure your code follows the existing style and conventions.
-- Include tests for any new functionality or bug fixes.
-- Write clear, concise commit messages and pull request descriptions.
-
-### Issues
-
-Feel free to report bugs or suggest enhancements by creating an issue. Be sure to include detailed information about the problem and, if possible, steps to reproduce it.
+Include tests for behavior changes, update documentation when behavior or setup changes, and describe the motivation and impact in the pull request. Keep credentials and local database files out of commits.
