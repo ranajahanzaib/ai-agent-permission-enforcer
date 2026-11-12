@@ -3,9 +3,9 @@
 The sample TypeScript adapter lives in [`packages/ai-agent-permission-enforcer-client`](../packages/ai-agent-permission-enforcer-client). Run it in the trusted server process that hosts your agent. Keep the bearer credential in server configuration; never send it to a browser or let the model choose it.
 
 ```ts
-import { AI Agent Permission EnforcerClient } from '@ai-agent-permission-enforcer/client';
+import { AgentPermissionEnforcerClient } from '@ai-agent-permission-enforcer/client';
 
-const authority = new AI Agent Permission EnforcerClient({
+const authority = new AgentPermissionEnforcerClient({
   baseUrl: process.env.AGENT_AUTHORITY_URL!,
   bearerToken: process.env.AGENT_AUTHORITY_TOKEN!,
 });

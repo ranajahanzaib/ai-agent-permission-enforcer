@@ -16,18 +16,18 @@ export type InvocationResponse<T = unknown> = {
   reason_code?: string;
 };
 
-export type AI Agent Permission EnforcerClientOptions = {
+export type AgentPermissionEnforcerClientOptions = {
   baseUrl: string;
   bearerToken: string;
   fetchImpl?: typeof fetch;
 };
 
-export class AI Agent Permission EnforcerClient {
+export class AgentPermissionEnforcerClient {
   private readonly baseUrl: string;
   private readonly bearerToken: string;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(options: AI Agent Permission EnforcerClientOptions) {
+  constructor(options: AgentPermissionEnforcerClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.bearerToken = options.bearerToken;
     this.fetchImpl = options.fetchImpl ?? fetch;
