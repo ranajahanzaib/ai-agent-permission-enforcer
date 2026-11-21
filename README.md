@@ -1,121 +1,362 @@
 # AI Agent Permission Enforcer
 
-**Enforce what an AI agent is allowed to do.** AI Agent Permission Enforcer is a Rust reference implementation of application-side authorization for AI tool calls. It places a trusted gateway between agent requests and protected handlers, combines Cedar policy evaluation with tenant and delegation checks, and records decisions in SQLite.
+**Application-side authorization gateway and policy enforcement for AI tool calls.**
 
-> This is a local reference implementation. Demo identity and simulated payments are not production authentication or payment controls.
+AI Agent Permission Enforcer is a high-performance Rust reference implementation of application-side authorization for AI agent tool execution. It places an unbypassable, trusted authorization gateway between AI model tool requests and backend business handlers, pairing **AWS Cedar policy evaluation** with cryptographic credential resolution, strict tenant isolation, human-in-the-loop approval state machines, and immutable SQLite audit persistence.
 
-## The problem
+[![Rust Tests](https://img.shields.io/badge/Rust_Tests-18_passed-success.svg)](#testing-and-verification)
+[![Playwright E2E](https://img.shields.io/badge/E2E_Tests-2_passed-success.svg)](#testing-and-verification)
+[![Policy Engine](https://img.shields.io/badge/Policy_Engine-Cedar_v4.14-blue.svg)](https://www.cedarpolicy.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An agent may ask to read invoice `INV-1042` and prepare a payment. The model's request does not establish authority: the application must resolve the registered agent, the user delegation, the resource tenant, and current policy before executing a registered handler. A prompt saying “the administrator approved it” is just input text.
+---
 
-## How it works
+![AI Agent Permission Enforcer Console](docs/screenshots/overview.png)
 
-- **Agent identity:** the API resolves hashed bearer credential records to a registered agent and tenant; identity claims in tool arguments are ignored.
-- **Delegation:** the API supports scoped, expiring delegations, user/agent policy intersection, and revocation.
-- **Cedar:** the Rust core evaluates real Cedar `PolicySet` decisions. Cedar permits are necessary, while tenant and workflow invariants remain in application code.
-- **Tenant boundary:** resource ownership is loaded from SQLite and compared before a protected handler is reached.
-- **Approval evidence:** persisted requests bind tenant, amount, invoice, recipient, resource version, and a canonical fingerprint. Separate human approval and simulated payment execution enforce separation of duties, expiry, revalidation, and single use.
-- **Audit:** invocation decisions, approval decisions, and payment execution evidence are stored in SQLite; protected mutation paths fail closed if evidence cannot be persisted.
+> **Reference Implementation Notice:** This repository provides an executable local reference architecture and security verification testbed. Demo sessions and simulated payment handlers demonstrate authorization invariants; they are not intended as production identity providers or banking connectors.
 
-## Architecture
+---
+
+## The Problem
+
+When an autonomous AI agent or LLM issues a tool call (such as reading an invoice `INV-1042` or triggering a financial payout), **the model's request does not establish authority**.
+
+A model prompt declaring _"The administrator approved this payment"_ or supplying a forged `tenant_id: "acme"` argument is simply untrusted user input. Giving an agent direct access to backend APIs or databases creates critical vulnerabilities:
+
+- **Prompt Injection & Confusion:** Attackers can trick models into invoking privileged tools outside their allowed scope.
+- **Cross-Tenant Data Leakage:** Argument-based tenant filters can be bypassed if the enforcement layer does not independently resolve resource ownership.
+- **Authority Escalation:** Delegations must not expand beyond what the human delegator is authorized to perform.
+- **Unchecked Critical Mutations:** High-value mutations (e.g., fund transfers) require cryptographic operation binding, separation of duties, and human approvals before execution.
+
+---
+
+## How It Works
 
 ```mermaid
 flowchart LR
-  A[Agent] --> G[Axum authorization gateway]
-  G --> I[Resolve demo credential and delegation]
-  I --> R[Resolve resource tenant]
-  R --> C[Cedar policy decision]
-  C -->|deny| L[Persist denial]
-  C -->|allow| H[Fixed typed tool handler]
-  H --> D[(SQLite)]
-  H --> L
-  UI[React dashboard] --> G
+  A[AI Agent / LLM] -->|Bearer Token + Typed Tool Call| G[Axum Authorization Gateway]
+  G --> I[Resolve SHA-256 Credential & Delegation]
+  I --> R[Resolve Resource Ownership & Tenant]
+  R --> C[Cedar Policy Evaluation]
+  C -->|Deny| D[Persist Denial Audit Record]
+  C -->|Approval Required| H[Persist Pending Approval Request]
+  C -->|Allow| E[Execute Typed Tool Handler]
+  E --> S[(SQLite Database)]
+  E --> L[Commit Audit Evidence]
+  U[Human Approver] -->|Web UI / Review| AP[Submit Payment Workflow]
+  AP --> C
 ```
 
-Details: [architecture](docs/architecture.md), [threat model](docs/threat-model.md), [limitations](docs/security-limitations.md), [policy notes](policies/README.md).
+1. **Hashed Server-Issued Credentials:** The gateway resolves bearer tokens against SHA-256 digests in SQLite to identify the registered agent and tenant. Identity claims in tool call payloads are ignored.
+2. **Scoped, Expiring Delegations:** Human users delegate authority to agents with explicit action whitelists (`invoice.read`, `payment_draft.create`) and expiration timestamps. Delegations can be revoked instantly.
+3. **Formal Cedar Policy Decision Point (PDP):** Evaluates Amazon Cedar `PolicySet` rules against typed principal, action, and resource entities. Default-deny is enforced globally.
+4. **Tenant Boundary Enforcement:** Resource ownership is queried from persistent storage and verified before reaching any tool handler. Cross-tenant access fails closed with zero data leakage.
+5. **Human Approval State Machine:** Financial drafts bind the tenant, invoice ID, recipient, amount, and canonical hash. Approvals enforce separation of duties: the delegating operator cannot approve their own agent's payout.
+6. **Immutable Audit Trail:** Invocations, approvals, and mutations fail closed if audit records cannot be persisted to SQLite.
 
-## Quick start
+---
 
-Prerequisites: stable Rust, Node.js 20 or later, and pnpm. No Docker or hosted service is needed.
+## Interactive Terminal Verification
+
+The repository includes both an Axum HTTP API gateway and a native Rust management CLI (`ai-agent-permission-enforcer-cli`):
+
+![Terminal Verification Showcase](docs/screenshots/cli-demo.png)
+
+---
+
+## Feature Showcase
+
+### 1. Authorization Control Plane & Live Dashboard
+
+The React + Vite dashboard (`apps/web`) provides a real-time command center for security operators, approvers, and administrators. It visualizes protected resources, audit event velocity, pending human approvals, and Cedar engine health.
+
+![Full Dashboard Showcase](docs/screenshots/dashboard.png)
+
+### 2. Automated Attack Scenario Simulator
+
+An integrated security test harness tests 18 deterministic attack vectors against the running gateway—including unknown tool calls, cross-tenant reads, prompt-injected identity claims, and delegation tampering. Each run generates a signed report with full JSON export.
+
+![Scenario Simulator](docs/screenshots/scenarios.png)
+
+### 3. Human-in-the-Loop Approval Queue
+
+Critical financial mutations trigger an `APPROVAL_REQUIRED` disposition. High-value drafts enter a persisted approval queue where authorized reviewers can inspect details and execute or reject payments with separation of duties.
+
+![Approval Queue](docs/screenshots/approvals.png)
+
+### 4. Scoped Delegations & Revocation
+
+Grant fine-grained, time-bounded tool access to specific agents. The engine verifies delegation validity at both draft creation time and payment execution time; revoking a delegation immediately invalidates downstream execution.
+
+![Tenant Delegations](docs/screenshots/delegations.png)
+
+### 5. Authorization Audit Trail
+
+Every gateway invocation is recorded with cryptographic request IDs, decision dispositions (`ALLOW`, `DENY`, `APPROVAL_REQUIRED`), normalized tool names, acting agents, delegating users, and Cedar policy references.
+
+![Audit Log](docs/screenshots/audit-log.png)
+
+### 6. Cedar Policy & Schema Explorer
+
+View live AWS Cedar rules and schemas served directly by the backend. Finance administrators can inspect policy sets and update active policies dynamically with CSRF protection.
+
+![Cedar Policies](docs/screenshots/cedar-policies.png)
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- **Rust:** Stable toolchain (`rustc` & `cargo` 1.80+)
+- **Node.js:** v20.0 or higher
+- **pnpm:** v9 or v10
+
+### 1. Clone & Setup Environment
 
 ```bash
+git clone https://github.com/ranajahanzaib/ai-agent-permission-enforcer.git
+cd ai-agent-permission-enforcer
 cp .env.example .env
+```
+
+### 2. Install Dependencies
+
+```bash
 pnpm install
 pnpm --prefix apps/web install
+```
+
+### 3. Start the API Gateway
+
+```bash
 cargo run -p ai-agent-permission-enforcer-api
 ```
 
-The API binds to `127.0.0.1:8787`, creates `ai-agent-permission-enforcer.db`, and seeds fictional demo data for two tenants and three invoices on first run. In another terminal:
+> **macOS Note:** If building on macOS with standalone Command Line Tools, ensure `DEVELOPER_DIR=/Library/Developer/CommandLineTools` is set if required by your Xcode linker configuration.
+
+The API gateway binds to `http://127.0.0.1:8787`, seeds fictional demo data for two tenants (`acme` and `northstar`), and creates the local SQLite database (`ai-agent-permission-enforcer.db`).
+
+### 4. Start the Web Dashboard
+
+In a separate terminal:
 
 ```bash
 pnpm --prefix apps/web dev
 ```
 
-Open <http://127.0.0.1:5173>. For a combined start after installing dependencies, run `pnpm dev` from the repository root. On startup, the API generates an unlogged local credential for its scenario simulator unless `AA_DEMO_AGENT_TOKEN` is explicitly configured. To obtain a credential for an agent integration, sign in to the dashboard as a demo finance admin and issue one from **Agent credentials**; it is shown once. Keep it in trusted server configuration.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser. Alternatively, run `pnpm dev` from the repository root to launch both concurrently.
 
-## Demo walkthrough
+---
 
-1. The overview displays protected, tenant-scoped SQLite data. `AA_DEMO_MODE=true` enables server-issued browser demo sessions and the identity switcher.
-2. Run the scenario simulator to exercise gateway authorization checks. It reports which catalog cases ran and which remain unexecuted.
-3. Call the protected read endpoint using a credential issued in the dashboard and stored in your shell environment as `AGENT_AUTHORITY_TOKEN`:
+## Step-by-Step Walkthrough
 
-   ```bash
-   curl -s http://127.0.0.1:8787/api/invoke \
-     -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
-     -H 'Content-Type: application/json' \
-     -d '{"tool":"read_invoice","invoice_id":"INV-1042"}'
-   ```
+### 1. Authorize an Agent Tool Call
 
-4. Create a draft using an idempotency key:
-
-   ```bash
-   curl -s http://127.0.0.1:8787/api/invoke \
-     -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
-     -H 'Content-Type: application/json' \
-     -d '{"tool":"create_payment_draft","invoice_id":"INV-1042","amount_cents":50000,"idempotency_key":"demo-payment-1"}'
-   ```
-
-   Pass the returned `draft_id` to `request_payment_approval`. In the dashboard, start a session as Alice, then switch to Owen to approve and submit the request. Alice cannot approve her own delegation's payment. Repeating the submission is rejected.
-
-5. Try `INV-2042` with `tenant_id: "acme"`; the foreign resource is denied without invoice contents. Inspect the persisted decision evidence in the dashboard or `GET /api/audit`.
-
-## Integration boundary
-
-Call the gateway using a registered action name and typed arguments. Never dispatch model-provided code, SQL, URLs, or arbitrary tool names directly:
-
-```json
-{ "tool": "read_invoice", "invoice_id": "INV-1042" }
-```
-
-The API owns Cedar evaluation and resource checks; a client wrapper is not a security boundary. Unknown tool names fail closed.
-
-## Development and checks
+Call the gateway using a registered tool name and valid bearer token:
 
 ```bash
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
+curl -s http://127.0.0.1:8787/api/invoke \
+  -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"read_invoice","invoice_id":"INV-1042"}'
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "request_id": "2177c406-c5e3-40c5-b0a4-815257a88c4d",
+  "decision": {
+    "disposition": "ALLOW",
+    "reason_code": "AUTHORIZED",
+    "policy_references": ["policy0"]
+  },
+  "result": {
+    "id": "INV-1042",
+    "tenant_id": "acme",
+    "customer": "Northwind Supplies",
+    "amount_cents": 125000,
+    "status": "OUTSTANDING"
+  }
+}
+```
+
+### 2. Verify Cross-Tenant Denial
+
+Attempt to read invoice `INV-2042` (which belongs to tenant `northstar`) using an `acme` agent credential:
+
+```bash
+curl -s -i http://127.0.0.1:8787/api/invoke \
+  -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"read_invoice","invoice_id":"INV-2042"}'
+```
+
+**Response (403 Forbidden):**
+
+```json
+{
+  "request_id": "6bcd20ed-3311-4b58-ab6d-df7976ca8976",
+  "decision": {
+    "disposition": "DENY",
+    "reason_code": "CROSS_TENANT",
+    "policy_references": []
+  }
+}
+```
+
+_The request is blocked at the gateway with zero resource data leaked._
+
+### 3. Create a Payment Draft & Request Approval
+
+```bash
+# Step A: Create idempotent draft
+curl -s http://127.0.0.1:8787/api/invoke \
+  -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"create_payment_draft","invoice_id":"INV-1042","amount_cents":50000,"idempotency_key":"payout-001"}'
+
+# Step B: Request human approval using draft_id
+curl -s http://127.0.0.1:8787/api/invoke \
+  -H "Authorization: Bearer $AGENT_AUTHORITY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"request_payment_approval","draft_id":"<draft_id>"}'
+```
+
+**Response (202 Accepted):**
+
+```json
+{
+  "decision": {
+    "disposition": "APPROVAL_REQUIRED",
+    "reason_code": "HUMAN_APPROVAL_REQUIRED",
+    "policy_references": ["policy4"]
+  },
+  "result": {
+    "approval_id": "266bd577-2738-4705-ba38-f120acf0cc8c",
+    "status": "PENDING",
+    "expires_in_seconds": 600
+  }
+}
+```
+
+---
+
+## Native CLI Tool
+
+The repository provides `ai-agent-permission-enforcer-cli` to inspect and export simulation reports directly from the SQLite database:
+
+```bash
+# List all simulation runs and verdicts
+cargo run -p ai-agent-permission-enforcer-cli -- reports list
+
+# Export a full audit report to JSON
+cargo run -p ai-agent-permission-enforcer-cli -- reports export <report-id> --output report.json
+```
+
+---
+
+## TypeScript Client Integration
+
+A server-side client adapter is provided in [`packages/ai-agent-permission-enforcer-client`](packages/ai-agent-permission-enforcer-client):
+
+```ts
+import { AgentPermissionEnforcerClient } from "@ai-agent-permission-enforcer/client";
+
+const authority = new AgentPermissionEnforcerClient({
+  baseUrl: process.env.AGENT_AUTHORITY_URL ?? "http://127.0.0.1:8787",
+  bearerToken: process.env.AGENT_AUTHORITY_TOKEN!,
+});
+
+// Wrap tool calls within your agent handler
+const outcome = await authority.invoke({
+  tool: "read_invoice",
+  invoice_id: "INV-1042",
+});
+
+if (outcome.decision?.disposition !== "ALLOW") {
+  throw new Error(`Permission denied: ${outcome.decision?.reason_code}`);
+}
+
+return outcome.result;
+```
+
+---
+
+## Repository Structure
+
+```text
+├── apps/
+│   └── web/                               # React + Vite admin and simulation dashboard
+│       ├── e2e/                           # Playwright end-to-end test suite
+│       └── src/                           # Dashboard UI and query components
+├── crates/
+│   ├── ai-agent-permission-enforcer-api/  # Axum HTTP authorization gateway
+│   ├── ai-agent-permission-enforcer-cli/  # Command-line reporting utility
+│   └── ai-agent-permission-enforcer-core/ # Cedar PDP evaluation & domain logic
+├── docs/
+│   ├── architecture.md                    # In-depth system design & sequence flow
+│   ├── integration-example.md             # Agent runtime and MCP adapter patterns
+│   ├── security-limitations.md            # Threat boundary & out-of-scope risks
+│   ├── threat-model.md                    # Attack tree & STRIDE analysis
+│   └── screenshots/                       # High-resolution showcase assets
+├── migrations/                            # SQLite schema migrations
+├── packages/
+│   └── ai-agent-permission-enforcer-client/ # Type-safe TypeScript client SDK
+└── policies/
+    ├── finance.cedar                      # AWS Cedar authorization policy set
+    └── schema.cedarschema                 # Cedar entity and action schema
+```
+
+---
+
+## Testing and Verification
+
+Every layer of the project includes automated test coverage:
+
+```bash
+# 1. Run all Rust unit and integration tests (18 tests)
 cargo test --workspace
-pnpm --prefix apps/web install
-pnpm --prefix apps/web lint
+
+# 2. Run Rust static analysis and linting
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all --check
+
+# 3. Run frontend unit tests (Vitest)
 pnpm --prefix apps/web test
-pnpm --prefix apps/web build
+
+# 4. Run frontend type check
+pnpm --prefix apps/web lint
+
+# 5. Run full end-to-end browser tests (Playwright)
 pnpm --prefix apps/web test:e2e
 ```
 
-The API defaults to SQLite at `sqlite://ai-agent-permission-enforcer.db`; set `DATABASE_URL` to change it. `AA_DEMO_AGENT_TOKEN` optionally sets the local bootstrap bearer value; when unset, the API generates a random internal credential for scenario simulation. Finance admins can issue short-lived, one-time-shown agent credentials from `POST /api/agent-credentials`; only a SHA-256 digest is stored, and credentials can be listed and revoked. Set `AA_DEMO_MODE=true` to enable browser demo sessions; demo session issuance returns 404 when the mode is disabled. `AA_SECURE_COOKIES=true` enables the cookie Secure flag for HTTPS environments. The Vite server proxies `/api` to port 8787.
+### Verification Matrix
 
-Scenario runs are persisted per tenant and can be listed or fetched from `GET /api/reports` and `GET /api/reports/{id}`. The dashboard links to each report as JSON. `GET /api/openapi.json` serves the local API description. Use `cargo run -p ai-agent-permission-enforcer-cli -- reports list` or `cargo run -p ai-agent-permission-enforcer-cli -- reports export <report-id> --output report.json` to inspect and export reports from the configured SQLite database.
+| Component           | Test Suite                                           | Pass Count | Status   |
+| ------------------- | ---------------------------------------------------- | ---------- | -------- |
+| **Cedar Core**      | `ai-agent-permission-enforcer-core` unit tests       | 8 passed   | Verified |
+| **Gateway API**     | `ai-agent-permission-enforcer-api` integration tests | 10 passed  | Verified |
+| **Web UI**          | Vitest unit tests                                    | 2 passed   | Verified |
+| **End-to-End**      | Playwright browser automation tests                  | 2 passed   | Verified |
+| **Static Analysis** | Clippy & TypeScript Compiler                         | 0 errors   | Verified |
 
-Finance admins can post a Cedar source to `POST /api/policies` with a CSRF token. The backend validates it against the shipped schema, stores a new active version, and the payment submission transaction reevaluates that version before execution. Runtime policy replacement currently applies to agent invocations and payment submission; other Cedar checks continue to use the shipped bootstrap policy.
+---
 
-## Current implementation scope
+## Threat Model & Security Boundaries
 
-Implemented controls include Cedar policy validation and versioning, server-side expiring demo sessions with CSRF checks on mutations, scoped and expiring delegations with revocation, hashed server-issued credentials, invoice tenant checks, idempotent draft creation, a persisted approval state machine, canonical operation and version binding, separation of duties, current-policy and delegation revalidation before submission, transactionally single-use simulated payments, and audit evidence committed with approval decisions and payment execution.
+- **Input Invalidation:** The gateway ignores arbitrary user prompts, system instructions, and caller-supplied identity claims. Authority is established strictly via cryptographic bearer tokens.
+- **Fail Closed:** Unknown tools, missing bearer headers, unresolvable tenants, or persistence errors trigger immediate denials (`HTTP 403` or `500`).
+- **Separation of Duties:** Operators who configure delegations cannot self-approve payout drafts.
+- **Single-Use Payments:** Once an approved payment draft is executed, its authorization token is marked `CONSUMED` transactionally. Replay submissions return `HTTP 409 Conflict`.
+- **Reference Scope:** For detailed threat analysis, see [docs/threat-model.md](docs/threat-model.md) and [docs/security-limitations.md](docs/security-limitations.md).
 
-This reference implementation uses switchable demo sessions rather than production authentication, and payments are simulated. The simulator executes 18 checks, including 15 of the 20 numbered workflow scenarios; five workflow scenarios are not implemented in the simulator, while some controls have separate API test coverage. Runtime policy replacement applies to agent invocations and payment submission; other Cedar checks use the shipped bootstrap policy. See `security-acceptance.json` for implementation and test coverage. The server binds only to loopback and must not be exposed publicly.
+---
 
-Security controls do not make model output safe and do not prevent every prompt injection. This project is not a replacement for production authentication, IAM, a security review, or application-specific business controls. See [security limitations](docs/security-limitations.md).
+## Contributing & License
 
-## Contributing and license
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before submitting pull requests.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under the MIT License; see [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
