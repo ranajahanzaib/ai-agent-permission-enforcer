@@ -2,9 +2,8 @@
 /target/
 
 # Node.js dependencies and builds
-/node_modules/
-/apps/web/node_modules/
-/apps/web/dist/
+node_modules/
+dist/
 *.tsbuildinfo
 
 # Local runtime data

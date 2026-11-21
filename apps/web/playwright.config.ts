@@ -22,6 +22,9 @@ export default defineConfig({
         AA_DEMO_MODE: "true",
         AA_DEMO_AGENT_TOKEN: "playwright-fixture-token",
         DATABASE_URL: `sqlite:///tmp/ai-agent-permission-enforcer-playwright-${process.pid}.db`,
+        ...(process.env.DEVELOPER_DIR
+          ? { DEVELOPER_DIR: process.env.DEVELOPER_DIR }
+          : {}),
       },
     },
     {
