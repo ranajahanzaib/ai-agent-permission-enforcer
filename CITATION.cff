@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use AI Agent Permission Enforcer in research or teaching, please cite this software."
+title: "AI Agent Permission Enforcer"
+version: 0.1.0
+authors:
+  - family-names: Rana
+    given-names: Jahanzaib
+    orcid: "https://orcid.org/0009-0006-7085-0440"
+repository-code: "https://github.com/ranajahanzaib/ai-agent-permission-enforcer"
+license: MIT
+abstract: "Application-side authorization gateway and policy enforcement for AI tool calls. AI Agent Permission Enforcer is a high-performance Rust reference implementation of application-side authorization for AI agent tool execution."
+keywords:
+  - authorization
+  - cedar-policy
+  - rust
+  - security
+  - access-control
